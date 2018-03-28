@@ -1,0 +1,5 @@
+{application, nix_cache,
+ [{applications, [cowboy, json]},
+  {description, "Standalone Nix binary cache HTTP server"},
+  {mod, {nix_cache_app, []}},
+  {vsn, "20180327.040208"}]}.
