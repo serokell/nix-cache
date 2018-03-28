@@ -6,6 +6,11 @@ init(Req, Opts) ->
     Resp = handle(Path, Req),
     {ok, Resp, Opts}.
 
+handle("/nix-cache-info", Req) ->
+    Body = io_lib:format(<<"StoreDir: /nix/store~n"
+			   "WantMassQuery: 0~n"
+			   "Priority: 30~n">>, []),
+    cowboy_req:reply(200, #{}, Body, Req);
 handle("/" ++ Object, Req) ->
     [Hash, Ext] = string:tokens(Object, "."),
     case nix_cache_hash:is_valid(Hash) of
