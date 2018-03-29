@@ -1,21 +1,21 @@
 -module(nix_cache_handler).
 -export([init/2]).
 
-init(Req, Opts) ->
+init(Req, DB) ->
     Path = binary_to_list(cowboy_req:path(Req)),
-    Resp = handle(Path, Req),
-    {ok, Resp, Opts}.
+    Resp = handle(Path, Req, DB),
+    {ok, Resp, DB}.
 
-handle("/nix-cache-info", Req) ->
-    Body = io_lib:format(<<"StoreDir: /nix/store~n"
+handle("/nix-cache-info", Req, _) ->
+    Body = io_lib:format(<<"StoreDir: ~s~n"
 			   "WantMassQuery: 0~n"
-			   "Priority: 30~n">>, []),
+			   "Priority: 30~n">>, [nix_cache_path:root()]),
     cowboy_req:reply(200, #{}, Body, Req);
-handle("/" ++ Object, Req) ->
+handle("/" ++ Object, Req, DB) ->
     [Hash, Ext] = string:tokens(Object, "."),
     case nix_cache_hash:is_valid(Hash) of
 	true ->
-	    case nix_cache_hash:to_path(Hash) of
+	    case nix_cache_hash:to_path(Hash, DB) of
 		{ok, Path} ->
 		    dispatch(Hash, Path, Ext, Req);
 		not_found ->
