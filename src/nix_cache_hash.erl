@@ -1,5 +1,5 @@
 -module(nix_cache_hash).
--export([is_valid/1, resolve/1]).
+-export([is_valid/1, to_path/1]).
 
 is_valid(Hash) ->
     ValidChars = "0123456789abcdfghijklmnpqrsvwxyz",
@@ -7,5 +7,10 @@ is_valid(Hash) ->
     lists:all(fun(C) -> lists:member(C, ValidChars) end, Hash)
 	andalso length(Hash) == ValidLength.
 
-resolve(Hash) ->
-    [Path] = filelib:wildcard("/nix/store/" ++ Hash ++ "-*"), Path.
+to_path(Hash) ->
+    case filelib:wildcard("/nix/store/" ++ Hash ++ "-*") of
+	[Path] ->
+	    {ok, Path};
+	[] ->
+	    not_found
+    end.

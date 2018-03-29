@@ -15,7 +15,12 @@ handle("/" ++ Object, Req) ->
     [Hash, Ext] = string:tokens(Object, "."),
     case nix_cache_hash:is_valid(Hash) of
 	true ->
-	    dispatch(Hash, Ext, Req);
+	    case nix_cache_hash:to_path(Hash) of
+		{ok, Path} ->
+		    dispatch(Hash, Path, Ext, Req);
+		not_found ->
+		    cowboy_req:reply(404, Req)
+	    end;
 	false ->
 	    cowboy_req:reply(400, Req)
     end.
@@ -44,15 +49,13 @@ narinfo(Hash, Info) ->
                    lists:join(" ", StrippedReferences), StrippedDeriver,
                    lists:join(" ", Signatures)]).
 
-dispatch(Hash, "nar", Req0) ->
-    Path = nix_cache_hash:resolve(Hash),
+dispatch(_, Path, "nar", Req0) ->
     Port = nix_cache_port:spawn("nix", ["dump-path", Path]),
     Req1 = cowboy_req:stream_reply(200, Req0),
     0 = nix_cache_port:stream(Port, Req1);
-dispatch(Hash, "narinfo", Req) ->
-    Path = nix_cache_hash:resolve(Hash),
+dispatch(Hash, Path, "narinfo", Req) ->
     nix_cache_path:sign(Path, key_file()),
     NarInfo = narinfo(Hash, nix_cache_path:info(Path)),
     cowboy_req:reply(200, #{}, NarInfo, Req);
-dispatch(_, _, Req) ->
-    cowboy_req:reply(404, Req).
+dispatch(_, _, _, Req) ->
+    cowboy_req:reply(400, Req).
