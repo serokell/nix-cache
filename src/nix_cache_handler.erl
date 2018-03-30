@@ -6,8 +6,6 @@ init(Req, DB) ->
     Resp = handle(Path, Req, DB),
     {ok, Resp, DB}.
 
-handle("/", Req, _) ->
-    cowboy_req:reply(404, Req);
 handle("/nix-cache-info", Req, _) ->
     Body = nix_cache_narinfo:format(
 	     #{<<"StoreDir">> => nix_cache_path:root(),
@@ -15,17 +13,21 @@ handle("/nix-cache-info", Req, _) ->
 	       <<"Priority">> => os:getenv(<<"NIX_CACHE_PRIORITY">>, "30")}),
     cowboy_req:reply(200, #{}, Body, Req);
 handle("/" ++ Object, Req, DB) ->
-    [Hash, Ext] = string:tokens(Object, "."),
-    case nix_cache_hash:is_valid(Hash) of
-	true ->
-	    case nix_cache_hash:to_path(Hash, DB) of
-		{ok, Path} ->
-		    dispatch(Hash, Path, Ext, Req);
-		not_found ->
-		    cowboy_req:reply(404, Req)
+    case string:tokens(Object, ".") of
+	[Hash, Ext] ->
+	    case nix_cache_hash:is_valid(Hash) of
+		true ->
+		    case nix_cache_hash:to_path(Hash, DB) of
+			{ok, Path} ->
+			    dispatch(Hash, Path, Ext, Req);
+			not_found ->
+			    cowboy_req:reply(404, Req)
+		    end;
+		false ->
+		    cowboy_req:reply(400, Req)
 	    end;
-	false ->
-	    cowboy_req:reply(400, Req)
+	_ ->
+	    cowboy_req:reply(404, Req)
     end.
 
 key_file() ->
