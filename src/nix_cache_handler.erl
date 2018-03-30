@@ -6,10 +6,19 @@ init(Req, DB) ->
     Resp = handle(Path, Req, DB),
     {ok, Resp, DB}.
 
+priority() ->
+    os:getenv(<<"NIX_CACHE_PRIORITY">>, "30").
+
+want_mass_query() ->
+    os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0").
+
+handle("/", Req, _) ->
+    cowboy_req:reply(404, Req);
 handle("/nix-cache-info", Req, _) ->
     Body = io_lib:format(<<"StoreDir: ~s~n"
-			   "WantMassQuery: 0~n"
-			   "Priority: 30~n">>, [nix_cache_path:root()]),
+			   "WantMassQuery: ~s~n"
+			   "Priority: ~s~n">>,
+			 [nix_cache_path:root(), want_mass_query(), priority()]),
     cowboy_req:reply(200, #{}, Body, Req);
 handle("/" ++ Object, Req, DB) ->
     [Hash, Ext] = string:tokens(Object, "."),
