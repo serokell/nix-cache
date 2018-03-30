@@ -12,11 +12,10 @@ is_valid(Hash) ->
 to_path_db() ->
     esqlite3:open("/nix/var/nix/db/db.sqlite", ?TIMEOUT, {readonly}).
 
-to_path_query() ->
-    <<"select path from ValidPaths where path >= ? limit 1">>.
 
 to_path(Hash, DB) ->
-    case esqlite3:q(to_path_query(), [filename:join(nix_cache_path:root(), Hash)], DB) of
+    Query = <<"select path from ValidPaths where path >= ? limit 1">>,
+    case esqlite3:q(Query, [filename:join(nix_cache_path:root(), Hash)], DB) of
 	[{Path}] ->
 	    {ok, Path};
 	[] ->
