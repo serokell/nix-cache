@@ -31,8 +31,7 @@ handle("/" ++ Object, Req, DB) ->
     end.
 
 key_file() ->
-    os:getenv("NIX_CACHE_KEY_FILE").
-
+    os:getenv(<<"NIX_CACHE_KEY_FILE">>).
 
 dispatch(_, Path, "nar", Req0) ->
     Port = nix_cache_port:spawn("nix", ["dump-path", Path]),
