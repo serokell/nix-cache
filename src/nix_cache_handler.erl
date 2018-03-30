@@ -6,19 +6,13 @@ init(Req, DB) ->
     Resp = handle(Path, Req, DB),
     {ok, Resp, DB}.
 
-priority() ->
-    os:getenv(<<"NIX_CACHE_PRIORITY">>, "30").
-
-want_mass_query() ->
-    os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0").
-
 handle("/", Req, _) ->
     cowboy_req:reply(404, Req);
 handle("/nix-cache-info", Req, _) ->
-    Body = io_lib:format(<<"StoreDir: ~s~n"
-			   "WantMassQuery: ~s~n"
-			   "Priority: ~s~n">>,
-			 [nix_cache_path:root(), want_mass_query(), priority()]),
+    Body = nix_cache_narinfo:format(
+	     #{<<"StoreDir">> => nix_cache_path:root(),
+	       <<"WantMassQuery">> => os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0"),
+	       <<"Priority">> => os:getenv(<<"NIX_CACHE_PRIORITY">>, "30")}),
     cowboy_req:reply(200, #{}, Body, Req);
 handle("/" ++ Object, Req, DB) ->
     [Hash, Ext] = string:tokens(Object, "."),
@@ -37,26 +31,6 @@ handle("/" ++ Object, Req, DB) ->
 key_file() ->
     os:getenv("NIX_CACHE_KEY_FILE").
 
-narinfo(Hash, Info) ->
-    #{<<"path">> := Path,
-      <<"narHash">> := NarHash,
-      <<"narSize">> := NarSize,
-      <<"deriver">> := Deriver,
-      <<"references">> := References,
-      <<"signatures">> := Signatures} = Info,
-    StrippedReferences = lists:map(fun(P) -> nix_cache_path:strip_store(P) end, References),
-    StrippedDeriver = nix_cache_path:strip_store(Deriver),
-    io_lib:format(<<"StorePath: ~s~n"
-    		    "URL: ~s.nar~n"
-    		    "Compression: none~n"
-    		    "NarHash: ~s~n"
-    		    "NarSize: ~B~n"
-    		    "References: ~s~n"
-    		    "Deriver: ~s~n"
-    		    "Sig: ~s~n">>,
-    		  [Path, Hash, NarHash, NarSize,
-                   lists:join(" ", StrippedReferences), StrippedDeriver,
-                   lists:join(" ", Signatures)]).
 
 dispatch(_, Path, "nar", Req0) ->
     Port = nix_cache_port:spawn("nix", ["dump-path", Path]),
@@ -64,7 +38,22 @@ dispatch(_, Path, "nar", Req0) ->
     0 = nix_cache_port:stream(Port, Req1);
 dispatch(Hash, Path, "narinfo", Req) ->
     nix_cache_path:sign(Path, key_file()),
-    NarInfo = narinfo(Hash, nix_cache_path:info(Path)),
-    cowboy_req:reply(200, #{}, NarInfo, Req);
+    #{<<"path">> := Path,
+      <<"narHash">> := NarHash,
+      <<"narSize">> := NarSize,
+      <<"deriver">> := Deriver,
+      <<"references">> := References0,
+      <<"signatures">> := Signatures} = nix_cache_path:info(Path),
+    References1 = lists:map(fun(F) -> filename:basename(F) end, References0),
+    Body = nix_cache_narinfo:format(
+	     #{<<"StorePath">> => Path,
+	       <<"URL">> => Hash ++ ".nar",
+	       <<"Compression">> => <<"none">>,
+	       <<"NarHash">> => NarHash,
+	       <<"NarSize">> => integer_to_binary(NarSize),
+	       <<"References">> => nix_cache_narinfo:join(References1),
+	       <<"Deriver">> => filename:basename(Deriver),
+	       <<"Sig">> => nix_cache_narinfo:join(Signatures)}),
+    cowboy_req:reply(200, #{}, Body, Req);
 dispatch(_, _, _, Req) ->
     cowboy_req:reply(400, Req).
