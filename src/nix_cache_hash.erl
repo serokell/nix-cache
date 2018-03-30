@@ -12,11 +12,12 @@ to_path_db() ->
     to_path_db(30 * ?SEC).
 
 to_path_db(Timeout) ->
-    esqlite3:open("/nix/var/nix/db/db.sqlite", Timeout, {readonly}).
+    File = filename:join([nix_cache_path:root(), "var", "nix", "db", "db.sqlite"]),
+    esqlite3:open(File, Timeout, {readonly}).
 
 to_path(Hash, DB) ->
     Query = <<"select path from ValidPaths where path >= ? limit 1">>,
-    case esqlite3:q(Query, [filename:join(nix_cache_path:root(), Hash)], DB) of
+    case esqlite3:q(Query, [filename:join(nix_cache_path:store(), Hash)], DB) of
 	[{Path}] ->
 	    {ok, Path};
 	[] ->

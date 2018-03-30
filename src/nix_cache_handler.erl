@@ -8,7 +8,7 @@ init(Req, DB) ->
 
 handle("/nix-cache-info", Req, _) ->
     Body = nix_cache_narinfo:format(
-	     #{<<"StoreDir">> => nix_cache_path:root(),
+	     #{<<"StoreDir">> => nix_cache_path:store(),
 	       <<"WantMassQuery">> => os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0"),
 	       <<"Priority">> => os:getenv(<<"NIX_CACHE_PRIORITY">>, "30")}),
     cowboy_req:reply(200, #{}, Body, Req);
