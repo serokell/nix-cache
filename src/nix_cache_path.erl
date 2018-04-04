@@ -4,8 +4,10 @@
 info(Path) ->
     Port = nix_cache_port:spawn("nix", ["path-info", "--json", Path]),
     {0, JSON} = nix_cache_port:consume(Port),
-    {ok, [Info], _Rest} = json:decode(JSON),
-    Info.
+    case json:decode(JSON) of
+	{ok, [Info], _Rest} -> {ok, Info};
+	_ -> none
+    end.
 
 root() ->
     os:getenv(<<"NIX_CACHE_ROOT">>, "/nix").

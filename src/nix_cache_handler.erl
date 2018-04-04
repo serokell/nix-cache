@@ -39,22 +39,27 @@ dispatch(_, Path, "nar", Req0) ->
     0 = nix_cache_port:stream(Port, Req1);
 dispatch(Hash, Path, "narinfo", Req) ->
     nix_cache_path:sign(Path, key_file()),
-    #{<<"path">> := Path,
-      <<"narHash">> := NarHash,
-      <<"narSize">> := NarSize,
-      <<"deriver">> := Deriver,
-      <<"references">> := References0,
-      <<"signatures">> := Signatures} = nix_cache_path:info(Path),
-    References1 = lists:map(fun(F) -> filename:basename(F) end, References0),
-    Body = nix_cache_narinfo:format(
-	     #{<<"StorePath">> => Path,
-	       <<"URL">> => Hash ++ ".nar",
-	       <<"Compression">> => <<"none">>,
-	       <<"NarHash">> => NarHash,
-	       <<"NarSize">> => integer_to_binary(NarSize),
-	       <<"References">> => nix_cache_narinfo:join(References1),
-	       <<"Deriver">> => filename:basename(Deriver),
-	       <<"Sig">> => nix_cache_narinfo:join(Signatures)}),
-    cowboy_req:reply(200, #{}, Body, Req);
+    case nix_cache_path:info(Path) of
+	{ok, Info} ->
+	    #{<<"path">> := Path,
+	      <<"narHash">> := NarHash,
+	      <<"narSize">> := NarSize,
+	      <<"deriver">> := Deriver,
+	      <<"references">> := References0,
+	      <<"signatures">> := Signatures} = Info,
+	    References1 = lists:map(fun(F) -> filename:basename(F) end, References0),
+	    Body = nix_cache_narinfo:format(
+		     #{<<"StorePath">> => Path,
+		       <<"URL">> => Hash ++ ".nar",
+		       <<"Compression">> => <<"none">>,
+		       <<"NarHash">> => NarHash,
+		       <<"NarSize">> => integer_to_binary(NarSize),
+		       <<"References">> => nix_cache_narinfo:join(References1),
+		       <<"Deriver">> => filename:basename(Deriver),
+		       <<"Sig">> => nix_cache_narinfo:join(Signatures)}),
+	    cowboy_req:reply(200, #{}, Body, Req);
+	none ->
+	    cowboy_req:reply(404, Req)
+    end;
 dispatch(_, _, _, Req) ->
     cowboy_req:reply(400, Req).
