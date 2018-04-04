@@ -34,11 +34,15 @@ key_file() ->
     os:getenv(<<"NIX_CACHE_KEY_FILE">>).
 
 dispatch(_, Path, "nar", Req0) ->
-    {ok, #{<<"narSize">> := NarSize}} = nix_cache_path:info(Path),
-    Port = nix_cache_port:spawn("nix", ["dump-path", Path]),
-    Req1 = cowboy_req:stream_reply(200, #{<<"Content-Length">> => NarSize,
-					  <<"Content-Type">> => <<"application/x-nix-nar">>}, Req0),
-    0 = nix_cache_port:stream(Port, Req1);
+    case nix_cache_path:info(Path) of
+	{ok, #{<<"narSize">> := NarSize}} ->
+	    Port = nix_cache_port:spawn("nix", ["dump-path", Path]),
+	    Req1 = cowboy_req:stream_reply(200, #{<<"Content-Length">> => NarSize,
+						  <<"Content-Type">> => <<"application/x-nix-nar">>}, Req0),
+	    0 = nix_cache_port:stream(Port, Req1);
+	none ->
+	    cowboy_req:reply(404, Req)
+    end;
 dispatch(Hash, Path, "narinfo", Req) ->
     nix_cache_path:sign(Path, key_file()),
     case nix_cache_path:info(Path) of
