@@ -69,8 +69,6 @@ DEFUN(getRealStoreDir) {
   return MAKE(nix_store_nif::ensure_local_store()->getRealStoreDir());
 };
 
-DEFUN(getUri) { return MAKE(nix_store_nif::store()->getUri()); };
-
 DEFUN(isValidPath) {
   // TODO: crashes on really invalid path
   try {
@@ -178,7 +176,6 @@ DEFUN(sign) {
 
 // TODO: dump to port
 static ErlNifFunc nif_funcs[] = {{"get_real_store_dir", 0, _getRealStoreDir},
-				 {"get_uri", 0, _getUri},
 				 {"is_valid_path", 1, _isValidPath},
 				 {"path_info_to_narinfo", 1, _pathInfoToNarInfo},
 				 {"path_info_to_map", 1, _pathInfoToMap},
