@@ -7,9 +7,9 @@ execute(Req, DB) ->
     {ok, handle(Path, Req, DB), DB}.
 
 handle("/nix-cache-info", Req, _) ->
-    Info = #{<<"StoreDir">> => nix_cache_path:store(),
-	     <<"WantMassQuery">> => os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0"),
-	     <<"Priority">> => os:getenv(<<"NIX_CACHE_PRIORITY">>, "30")},
+    Info = #{<<"Priority">> => os:getenv(<<"NIX_CACHE_PRIORITY">>, "30"),
+	     <<"StoreDir">> => nix_cache_path:store(),
+	     <<"WantMassQuery">> => os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0")},
     cowboy_req:reply(200, #{}, nix_cache_info:format(Info), Req);
 handle("/" ++ Object, Req, DB) ->
     try
