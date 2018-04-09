@@ -6,13 +6,14 @@ execute(Req, #{}) ->
     Path = binary_to_list(cowboy_req:path(Req)),
     {ok, handle(Path, Req), #{}}.
 
+boolean_to_integer(true) -> 1;
+boolean_to_integer(false) -> 0.
+
 handle("/nix-cache-info", Req) ->
-    Body = io_lib:format(<<"StoreDir: ~s~n"
-			   "WantMassQuery: ~s~n"
-			   "Priority: ~s~n">>,
-			 nix_store_nif:get_real_store_dir(),
-			 os:getenv(<<"NIX_CACHE_PRIORITY">>, "30"),
-			 os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0")),
+    {ok, WantMassQuery} = application:get_env(nix_cache, want_mass_query),
+    {ok, Priority} = application:get_env(nix_cache, priority),
+    Body = io_lib:format(<<"StoreDir: ~s~nWantMassQuery: ~B~nPriority: ~B~n">>,
+			 [nix_store_nif:get_real_store_dir(), boolean_to_integer(WantMassQuery), Priority]),
     cowboy_req:reply(200, #{}, Body, Req);
 handle("/" ++ Object, Req) ->
     try
@@ -29,9 +30,6 @@ serve(Object, Req) ->
     PathInfo = nix_store_nif:query_path_info(Path),
     dispatch(PathInfo, Ext, Req).
 
-key() ->
-    os:getenv(<<"NIX_CACHE_KEY">>, "nix-cache-test:NghpkUOvmdTsppxtAaB5HSKvi+/uX7/JQ8r7CFXHFwrfaPxdzLCum+ntIfvvmp1Q9aalhj0Uq8U1wFMxY1IwLQ==").
-
 dispatch(#{<<"narSize">> := NarSize, <<"path">> := Path}, "nar", Req0) ->
     Headers = #{<<"content-length">> => integer_to_binary(NarSize),
 		<<"content-type">> => <<"application/x-nix-nar">>},
@@ -39,6 +37,7 @@ dispatch(#{<<"narSize">> := NarSize, <<"path">> := Path}, "nar", Req0) ->
     Req1 = cowboy_req:stream_reply(200, Headers, Req0),
     0 = nix_cache_port:stream(Port, Req1);
 dispatch(PathInfo0, "narinfo", Req) ->
-    PathInfo1 = nix_store_nif:sign(PathInfo0, key()),
+    {ok, Key} = application:get_env(nix_cache, key),
+    PathInfo1 = nix_store_nif:sign(PathInfo0, Key),
     cowboy_req:reply(200, #{<<"content-type">> => <<"text/x-nix-narinfo">>},
 		     nix_store_nif:path_info_to_narinfo(PathInfo1), Req).

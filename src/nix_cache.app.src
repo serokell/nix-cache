@@ -1,5 +1,9 @@
 {application, nix_cache,
  [{applications, [cowboy]},
   {description, "Standalone Nix binary cache HTTP server"},
+  {env, [{key, "nix-cache-test:NghpkUOvmdTsppxtAaB5HSKvi+/uX7/JQ8r7CFXHFwrfaPxdzLCum+ntIfvvmp1Q9aalhj0Uq8U1wFMxY1IwLQ=="},
+	 {port, 17672},
+	 {priority, 30},
+	 {want_mass_query, false}]},
   {mod, {nix_cache_app, []}},
   {vsn, "20180327.040208"}]}.
