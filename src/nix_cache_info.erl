@@ -1,4 +1,4 @@
--module(nix_cache_narinfo).
+-module(nix_cache_info).
 -export([format/1, join/1]).
 
 format(M) ->
