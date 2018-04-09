@@ -1,5 +1,6 @@
 default: priv/nix_store_nif.so
-
+clean: ; rm -r priv/nix_store_nif.so
+.PHONY: default clean
 CPPFLAGS += -fPIC
 LDFLAGS += -shared -lerl_interface -lnixstore
 
