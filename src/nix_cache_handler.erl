@@ -1,7 +1,8 @@
 -module(nix_cache_handler).
--export([init/2]).
+-behaviour(cowboy_middleware).
+-export([execute/2]).
 
-init(Req, DB) ->
+execute(Req, DB) ->
     Path = binary_to_list(cowboy_req:path(Req)),
     {ok, handle(Path, Req, DB), DB}.
 
