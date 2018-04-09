@@ -27,11 +27,7 @@ static ref<LocalFSStore> ensure_local_store() {
     throw Error("you don't have sufficient rights to use this command");
   return ref<LocalFSStore>(store_ref);
 }
-}; // namespace nix_store_nif
 
-extern "C" {
-using nix::ValidPathInfo;
-using nix::ref;
 
 #define ARGN(type, n) nifpp::get<type>(env, argv[n])
 
@@ -54,15 +50,15 @@ static int on_load(ErlNifEnv *env, void **priv, ERL_NIF_TERM info) {
 }
 
 static void on_unload(ErlNifEnv *env, void *priv_data) {
-  nix_store_nif::store_ptr.~shared_ptr();
+  store_ptr.reset();
 }
 
 static int on_upgrade(ErlNifEnv *env, void **priv, void **old_priv_data,
                       ERL_NIF_TERM load_info) {
   // Never could get this to work, just crashes:
-  // return on_load(env, priv, load_info);
+  return on_load(env, priv, load_info);
 
-  return 1;
+  return 0;
 }
 
 DEFUN(getRealStoreDir) {
@@ -146,7 +142,9 @@ DEFUN(sign) {
     return enif_raise_exception(env, MAKE((std::string)e.what()));
   }
 }
-
+}; // namespace nix_store_nif
+extern "C" {
+  using namespace nix_store_nif;
 // TODO: dump to port
 static ErlNifFunc nif_funcs[] = {{"get_real_store_dir", 0, _getRealStoreDir},
 				 {"path_info_narinfo", 1, _pathInfoNarInfo},
