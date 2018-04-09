@@ -1,42 +1,34 @@
 -module(nix_store_nif).
--on_load(init/0).
+-export([get_real_store_dir/0, get_uri/0, is_valid_path/1, path_info_to_narinfo/1,
+	 path_info_to_map/1, query_path_from_hash_part/1, query_path_info/1, sign/2]).
 
--export([queryPathFromHashPart/1,
-         sign/2,
-         getUri/0,
-         getStorePath/0,
-         isValidPath/1,
-         pathInfo/1,
-         pathInfo2NarInfo/1,
-         pathInfo2map/1
-        ]).
+-on_load(init/0).
 
 init() ->
     NifName = "nix_store_nif",
     NifPath = filename:join(code:priv_dir(nix_cache), NifName),
     ok = erlang:load_nif(NifPath, 0).
 
-queryPathFromHashPart(_hashPart) ->
+get_real_store_dir() ->
     erlang:nif_error(nif_library_not_loaded).
 
-sign(_storePath, _key) ->
+get_uri() ->
     erlang:nif_error(nif_library_not_loaded).
 
-getUri() ->
+is_valid_path(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
-getStorePath() ->
+path_info_to_narinfo(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
-
-isValidPath(_storePath) ->
+path_info_to_map(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
-pathInfo(_storePath) ->
+query_path_from_hash_part(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
-pathInfo2NarInfo(_path) ->
+query_path_info(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
-pathInfo2map(_path) ->
+sign(_, _) ->
     erlang:nif_error(nif_library_not_loaded).
