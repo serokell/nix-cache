@@ -2,52 +2,35 @@
 -behaviour(cowboy_middleware).
 -export([execute/2]).
 
-execute(Req, DB) ->
+execute(Req, #{}) ->
     Path = binary_to_list(cowboy_req:path(Req)),
-    {ok, handle(Path, Req, DB), DB}.
+    {ok, handle(Path, Req), #{}}.
 
-handle("/nix-cache-info", Req, _) ->
-    Info = #{<<"Priority">> => os:getenv(<<"NIX_CACHE_PRIORITY">>, "30"),
-	     <<"StoreDir">> => nix_cache_path:store(),
-	     <<"WantMassQuery">> => os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0")},
-    cowboy_req:reply(200, #{}, nix_cache_info:format(Info), Req);
-handle("/" ++ Object, Req, DB) ->
+handle("/nix-cache-info", Req) ->
+    Body = io_lib:format(<<"StoreDir: ~s~n"
+			   "WantMassQuery: ~s~n"
+			   "Priority: ~s~n">>,
+			 nix_store_nif:get_real_store_dir(),
+			 os:getenv(<<"NIX_CACHE_PRIORITY">>, "30"),
+			 os:getenv(<<"NIX_CACHE_WANT_MASS_QUERY">>, "0")),
+    cowboy_req:reply(200, #{}, Body, Req);
+handle("/" ++ Object, Req) ->
     try
-	serve(Object, Req, DB)
+	serve(Object, Req)
     catch
 	error:Reason ->
 	    cowboy_req:reply(404, #{<<"content-type">> => <<"text/x-erlang">>},
 			     io_lib:format("~p~n", [{Reason, erlang:get_stacktrace()}]), Req)
     end.
 
-serve(Object, Req, DB) ->
+serve(Object, Req) ->
     [Hash, Ext] = string:tokens(Object, "."),
-    true = nix_cache_hash:is_valid(Hash),
-    {ok, Path} = nix_cache_hash:to_path(Hash, DB),
-    {ok, PathInfo} = nix_cache_path:info(Path),
+    Path = nix_store_nif:query_path_from_hash_part(Hash),
+    PathInfo = nix_store_nif:query_path_info(Path),
     dispatch(PathInfo, Ext, Req).
 
-key_file() ->
-    os:getenv(<<"NIX_CACHE_KEY_FILE">>, "/run/keys/nix-cache").
-
-narinfo(#{<<"deriver">> := Deriver,
-	  <<"narHash">> := NarHash,
-	  <<"narSize">> := NarSize,
-	  <<"path">> := Path,
-	  <<"references">> := References0,
-	  <<"signatures">> := Signatures}) ->
-    References1 = lists:map(fun(F) -> filename:basename(F) end, References0),
-    #{<<"StorePath">> => Path,
-      <<"URL">> => nix_cache_path:to_hash(Path) ++ ".nar",
-      <<"Compression">> => <<"none">>,
-      <<"NarHash">> => NarHash,
-      <<"NarSize">> => integer_to_binary(NarSize),
-      <<"References">> => nix_cache_info:join(References1),
-      <<"Deriver">> => filename:basename(Deriver),
-      <<"Sig">> => nix_cache_info:join(Signatures)}.
-
-narinfo_with_defaults(PathInfo) ->
-    narinfo(maps:merge(#{<<"deriver">> => <<>>}, PathInfo)).
+key() ->
+    os:getenv(<<"NIX_CACHE_KEY">>, "nix-cache-test:NghpkUOvmdTsppxtAaB5HSKvi+/uX7/JQ8r7CFXHFwrfaPxdzLCum+ntIfvvmp1Q9aalhj0Uq8U1wFMxY1IwLQ==").
 
 dispatch(#{<<"narSize">> := NarSize, <<"path">> := Path}, "nar", Req0) ->
     Headers = #{<<"content-length">> => integer_to_binary(NarSize),
@@ -55,7 +38,7 @@ dispatch(#{<<"narSize">> := NarSize, <<"path">> := Path}, "nar", Req0) ->
     Port = nix_cache_port:spawn("nix", [<<"dump-path">>, Path]),
     Req1 = cowboy_req:stream_reply(200, Headers, Req0),
     0 = nix_cache_port:stream(Port, Req1);
-dispatch(#{<<"path">> := Path} = PathInfo, "narinfo", Req) ->
-    nix_cache_path:sign(Path, key_file()),
+dispatch(PathInfo0, "narinfo", Req) ->
+    PathInfo1 = nix_store_nif:sign(PathInfo0, key()),
     cowboy_req:reply(200, #{<<"content-type">> => <<"text/x-nix-narinfo">>},
-		     nix_cache_info:format(narinfo_with_defaults(PathInfo)), Req).
+		     nix_store_nif:path_info_to_narinfo(PathInfo1), Req).
