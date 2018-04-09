@@ -17,26 +17,24 @@ handle("/nix-cache-info", Req) ->
     cowboy_req:reply(200, #{}, Body, Req);
 handle("/" ++ Object, Req) ->
     try
-	serve(Object, Req)
+	[Hash, Ext] = string:tokens(Object, "."),
+	Path = nix_store_nif:query_path_from_hash_part(Hash),
+	PathInfo = nix_store_nif:query_path_info(Path),
+	serve(PathInfo, Ext, Req)
     catch
 	error:Reason ->
 	    cowboy_req:reply(404, #{<<"content-type">> => <<"text/x-erlang">>},
 			     io_lib:format("~p~n", [{Reason, erlang:get_stacktrace()}]), Req)
     end.
 
-serve(Object, Req) ->
-    [Hash, Ext] = string:tokens(Object, "."),
-    Path = nix_store_nif:query_path_from_hash_part(Hash),
-    PathInfo = nix_store_nif:query_path_info(Path),
-    dispatch(PathInfo, Ext, Req).
-
-dispatch(#{<<"narSize">> := NarSize, <<"path">> := Path}, "nar", Req0) ->
+serve(PathInfo, "nar", Req0) ->
+    #{narSize := NarSize, path := Path} = nix_store_nif:path_info_to_map(PathInfo),
     Headers = #{<<"content-length">> => integer_to_binary(NarSize),
 		<<"content-type">> => <<"application/x-nix-nar">>},
     Port = nix_cache_port:spawn("nix", [<<"dump-path">>, Path]),
     Req1 = cowboy_req:stream_reply(200, Headers, Req0),
     0 = nix_cache_port:stream(Port, Req1);
-dispatch(PathInfo0, "narinfo", Req) ->
+serve(PathInfo0, "narinfo", Req) ->
     {ok, Key} = application:get_env(nix_cache, key),
     PathInfo1 = nix_store_nif:sign(PathInfo0, Key),
     cowboy_req:reply(200, #{<<"content-type">> => <<"text/x-nix-narinfo">>},
