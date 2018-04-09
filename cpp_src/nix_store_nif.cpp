@@ -69,14 +69,6 @@ DEFUN(getRealStoreDir) {
   return MAKE(nix_store_nif::ensure_local_store()->getRealStoreDir());
 };
 
-DEFUN(isValidPath) {
-  // TODO: crashes on really invalid path
-  try {
-    return MAKE(nix_store_nif::store()->isValidPath(ARGN(nix::Path, 0)));
-  }
-  CATCH_BADARG;
-}
-
 DEFUN(pathInfoToMap) {
   try {
     ref<const ValidPathInfo> *pathref;
@@ -176,7 +168,6 @@ DEFUN(sign) {
 
 // TODO: dump to port
 static ErlNifFunc nif_funcs[] = {{"get_real_store_dir", 0, _getRealStoreDir},
-				 {"is_valid_path", 1, _isValidPath},
 				 {"path_info_to_narinfo", 1, _pathInfoToNarInfo},
 				 {"path_info_to_map", 1, _pathInfoToMap},
 				 {"query_path_from_hash_part", 1, _queryPathFromHashPart},
