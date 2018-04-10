@@ -63,12 +63,6 @@ static void on_unload(ErlNifEnv *env, void *priv_data) {
   store_ptr.reset();
 }
 
-static int on_upgrade(ErlNifEnv *env, void **priv, void **old_priv_data,
-                      ERL_NIF_TERM load_info) {
-  // Never could get this to work, doesn't update
-  return on_load(env, priv, load_info);
-}
-
 
   using nifpp::str_atom;
   struct PortSink : nix::BufferedSink {
@@ -172,7 +166,7 @@ static ErlNifFunc nif_funcs[] = {
   #include "nix_store_nif.cpp"
 };
 
-ERL_NIF_INIT(nix_store_nif, nif_funcs, on_load, NULL, on_upgrade, on_unload);
+ERL_NIF_INIT(nix_store_nif, nif_funcs, on_load, NULL, NULL, on_unload);
 }; // namespace nix_store_nif
 
 #endif
