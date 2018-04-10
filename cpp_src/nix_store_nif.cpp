@@ -102,17 +102,6 @@ DEFUN(pathInfoNarSize) {
   CATCH_BADARG
 }
 
-DEFUN(pathInfoPath) {
-  try {
-    ref<const ValidPathInfo> *pathref;
-    nifpp::get(env, argv[0], pathref);
-    decltype(*pathref) vpi(*pathref);
-
-    return MAKE(vpi->path);
-  }
-  CATCH_BADARG
-}
-
 DEFUN(queryPathFromHashPart) {
   try {
     return MAKE(
@@ -162,7 +151,6 @@ DEFUN(sign) {
 static ErlNifFunc nif_funcs[] = {{"get_real_store_dir", 0, _getRealStoreDir},
 				 {"path_info_narinfo", 1, _pathInfoNarInfo},
 				 {"path_info_narsize", 1, _pathInfoNarSize},
-				 {"path_info_path", 1, _pathInfoPath},
 				 {"query_path_from_hash_part", 1, _queryPathFromHashPart},
 				 {"query_path_info", 1, _queryPathInfo},
 				 {"sign", 2, _sign}};

@@ -1,5 +1,5 @@
 -module(nix_store_nif).
--export([get_real_store_dir/0, path_info_narinfo/1, path_info_narsize/1, path_info_path/1,
+-export([get_real_store_dir/0, path_info_narinfo/1, path_info_narsize/1,
 	 query_path_from_hash_part/1, query_path_info/1, sign/2]).
 
 -on_load(init/0).
@@ -16,9 +16,6 @@ path_info_narinfo(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
 path_info_narsize(_) ->
-    erlang:nif_error(nif_library_not_loaded).
-
-path_info_path(_) ->
     erlang:nif_error(nif_library_not_loaded).
 
 query_path_from_hash_part(_) ->
