@@ -95,8 +95,9 @@ static int on_upgrade(ErlNifEnv *env, void **priv, void **old_priv_data,
 
   DEFUN(query_path_info, [](nix::Path &path) {
       // TODO: async
-      // caveat: caches wrong (prefix) lookups
-      auto pathinfo = nix_store_nif::store()->queryPathInfo(path);
+      // caveat: caches wrong (prefix) lookups. use clearPathInfoCache to fix
+      store()->assertStorePath(path);
+      auto pathinfo = store()->queryPathInfo(path);
       return nifpp::construct_resource<decltype(pathinfo)>(pathinfo);
     })
 
@@ -109,7 +110,7 @@ static int on_upgrade(ErlNifEnv *env, void **priv, void **old_priv_data,
         return nifpp::construct_resource<ValidPathRef>(vpi);
       //return NULL; //nifpp::str_atom("duplicate");
       // copy as non-const
-      ref<ValidPathInfo> info2 = nix::make_ref<ValidPathInfo>(*vpi);
+      auto info2 = nix::make_ref<ValidPathInfo>(*vpi);
       info2->sigs.insert(signature);
       
       return nifpp::construct_resource<ValidPathRef>(info2);
