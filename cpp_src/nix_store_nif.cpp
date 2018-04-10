@@ -69,36 +69,6 @@ DEFUN(getRealStoreDir) {
   return MAKE(nix_store_nif::ensure_local_store()->getRealStoreDir());
 };
 
-DEFUN(pathInfoToMap) {
-  try {
-    ref<const ValidPathInfo> *pathref;
-    nifpp::get(env, argv[0], pathref);
-    decltype(*pathref) vpi(*pathref);
-
-    std::map<nifpp::str_atom, nifpp::TERM> result;
-
-    result["path"] = MAKE(vpi->path);
-    result["deriver"] = MAKE(vpi->deriver);
-    result["ca"] = MAKE(vpi->ca);
-    result["narHash"] = MAKE(vpi->narHash.to_string());
-    result["references"] = MAKE(vpi->references);
-    result["narSize"] = MAKE(vpi->narSize);
-    result["sigs"] = MAKE(vpi->sigs);
-    result["registrationTime"] = MAKE(vpi->registrationTime);
-
-    auto narInfo = pathref->dynamic_pointer_cast<const nix::NarInfo>();
-    if (narInfo) { // didn't test this, might crash ;)
-      result["system"] = MAKE(narInfo->system);
-      result["compression"] = MAKE(narInfo->compression);
-      result["fileHash"] = MAKE(narInfo->fileHash.to_string());
-      result["fileSize"] = MAKE(narInfo->fileSize);
-    }
-
-    return MAKE(result);
-  }
-  CATCH_BADARG
-}
-
 // TODO: allow passing compression, url, fileHash, fileSize
 DEFUN(pathInfoNarInfo) {
   try {
@@ -193,7 +163,6 @@ static ErlNifFunc nif_funcs[] = {{"get_real_store_dir", 0, _getRealStoreDir},
 				 {"path_info_narinfo", 1, _pathInfoNarInfo},
 				 {"path_info_narsize", 1, _pathInfoNarSize},
 				 {"path_info_path", 1, _pathInfoPath},
-				 {"path_info_to_map", 1, _pathInfoToMap},
 				 {"query_path_from_hash_part", 1, _queryPathFromHashPart},
 				 {"query_path_info", 1, _queryPathInfo},
 				 {"sign", 2, _sign}};

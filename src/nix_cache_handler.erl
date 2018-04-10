@@ -28,9 +28,9 @@ handle("/" ++ Object, Req) ->
     end.
 
 serve(PathInfo, "nar", Req0) ->
-    #{narSize := NarSize, path := Path} = nix_store_nif:path_info_to_map(PathInfo),
-    Headers = #{<<"content-length">> => integer_to_binary(NarSize),
+    Headers = #{<<"content-length">> => integer_to_binary(nix_store_nif:path_info_narsize(PathInfo)),
 		<<"content-type">> => <<"application/x-nix-nar">>},
+    Path = nix_store_nif:path_info_path(PathInfo),
     Port = nix_cache_port:spawn("nix", [<<"dump-path">>, Path]),
     Req1 = cowboy_req:stream_reply(200, Headers, Req0),
     0 = nix_cache_port:stream(Port, Req1);
