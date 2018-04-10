@@ -100,7 +100,7 @@ DEFUN(pathInfoToMap) {
 }
 
 // TODO: allow passing compression, url, fileHash, fileSize
-DEFUN(pathInfoToNarInfo) {
+DEFUN(pathInfoNarInfo) {
   try {
     ref<const ValidPathInfo> *pathref;
     nifpp::get(env, argv[0], pathref);
@@ -168,7 +168,7 @@ DEFUN(sign) {
 
 // TODO: dump to port
 static ErlNifFunc nif_funcs[] = {{"get_real_store_dir", 0, _getRealStoreDir},
-				 {"path_info_to_narinfo", 1, _pathInfoToNarInfo},
+				 {"path_info_narinfo", 1, _pathInfoNarInfo},
 				 {"path_info_to_map", 1, _pathInfoToMap},
 				 {"query_path_from_hash_part", 1, _queryPathFromHashPart},
 				 {"query_path_info", 1, _queryPathInfo},

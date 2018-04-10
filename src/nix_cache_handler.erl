@@ -38,4 +38,4 @@ serve(PathInfo0, "narinfo", Req) ->
     {ok, Key} = application:get_env(nix_cache, key),
     PathInfo1 = nix_store_nif:sign(PathInfo0, Key),
     cowboy_req:reply(200, #{<<"content-type">> => <<"text/x-nix-narinfo">>},
-		     nix_store_nif:path_info_to_narinfo(PathInfo1), Req).
+		     nix_store_nif:path_info_narinfo(PathInfo1), Req).
