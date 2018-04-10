@@ -1,5 +1,6 @@
 -module(nix_store_nif).
 -export([get_real_store_dir/0, path_info_narinfo/1, path_info_narsize/1,
+   path_nar/3, path_nar_stream/2,
 	 query_path_from_hash_part/1, query_path_info/1, sign/2]).
 
 -on_load(init/0).
@@ -26,3 +27,26 @@ query_path_info(_) ->
 
 sign(_, _) ->
     erlang:nif_error(nif_library_not_loaded).
+
+path_nar(_, _, _) ->
+    erlang:nif_error(nif_library_not_loaded).
+
+path_nar_stream(Path, Request) ->
+    Ref = make_ref(),
+    spawn(nix_store_nif, path_nar, [Path, self(), Ref]),
+    %path_nar(Path, self(), Ref),
+    get_result(Ref, Request).
+
+get_result(Ref, Request) ->
+    receive
+        {nix_store, Ref, data, Data} ->
+            cowboy_req:stream_body(Data, nofin, Request),
+            get_result(Ref, Request);
+        {nix_store, Ref, nix_error, Err} ->
+            cowboy_req:stream_body(<<>>, fin, Request),
+            {error, Err};
+        {nix_store, Ref, 'end'} ->
+            cowboy_req:stream_body(<<>>, fin, Request),
+            {ok}
+    end.
+

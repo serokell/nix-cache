@@ -8,16 +8,7 @@ nix-cache is a standalone Nix binary cache HTTP server.
    - Significantly more configurable
 
 ** Considerations
-
-   - Has to run as root to sign packages, see: [[https://github.com/NixOS/nix/issues/1708][NixOS/nix#1708]]
-
-     This can be eventually resolved either by patching Nix to allow trusted
-     users to sign paths, or by extracting privilege-separated signing node.
-
-   - Relies on Nix utilities being present on PATH. Creating Nix NIFs (bindings)
-     is a possibility but not pursued at the moment. This means that two
-     processes are created on each ~.nar~ request, one to sign the path (or
-     ensure that it's signed), and another to dump it.
+   - There is no compression support yet.
 
 ** Environment variables
 

@@ -18,7 +18,7 @@ namespace template_fuckery {
 
   template<typename F, typename ...Filled> inline
   ERL_NIF_TERM recursive(ErlNifEnv *env, const ERL_NIF_TERM argv[], F fun, typelist<> t, Filled&&... filled) {
-    return invoke_with_catch(env, fun, filled...);
+    return nifpp::make(env, fun(std::forward<Filled>(filled)...));
   }
   template<typename F, typename T0, typename ...Empty, typename ...Filled> inline
   ERL_NIF_TERM recursive(ErlNifEnv *env, const ERL_NIF_TERM argv[], F fun, typelist<T0, Empty...> t, Filled&&... filled) {
@@ -29,13 +29,25 @@ namespace template_fuckery {
   template<typename F> inline
   ERL_NIF_TERM helper(ErlNifEnv *env, const ERL_NIF_TERM argv[], F fun) {
     if (env == NULL && argv == NULL) return N<F>::args::n;
-    return template_fuckery::recursive(env, argv, fun, typename N<F>::args{});
+    try {
+      return template_fuckery::recursive(env, argv, fun, typename N<F>::args{});
+    }
+    catch (nifpp::badarg) {
+      return enif_make_badarg(env);
+    }
+    catch (nix::InvalidPath) {
+      return enif_raise_exception(env, nifpp::make(env, nifpp::str_atom("nix_invalid_path")));
+    }
+    catch (nix::Error &e) {
+      return enif_raise_exception(env, nifpp::make(env, (std::string)e.what()));
+    }
   }
 }; // namespace template_fuckery
 
 
-#define DEFUN(name, ...) \
+#define DEFUNC(name, dirty, ...)                                         \
   static ERL_NIF_TERM _##name(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) \
   { return template_fuckery::helper(env, argv, __VA_ARGS__); }
+#define DEFUN(name, ...) DEFUNC(name, 0, __VA_ARGS__)
 
 #endif

@@ -3,9 +3,30 @@
 #include <nix/local-store.hh>
 #include <nix/nar-info.hh>
 #include <nix/store-api.hh>
+#include <nix/serialise.hh>
 
 #include <nifpp.h>
 #include "./erlang_variadic.hh"
+
+namespace nifpp {
+  inline TERM copy(ErlNifEnv * const env, const TERM& orig) {
+    return TERM(enif_make_copy(env, orig));
+  }
+  struct Env {
+    ErlNifEnv * const e;
+    const bool allocated = false;
+    Env() : e(enif_alloc_env()), allocated(true) { };
+    explicit Env(ErlNifEnv* e) : e(e), allocated(false) { };
+    ~Env() { if (allocated) enif_free_env(e); }
+    Env(const Env &) = delete;
+    Env & operator=(const Env &) = delete;
+
+    inline operator ErlNifEnv*() const {return e;}
+    inline TERM copy(const TERM& orig) {
+      return TERM(enif_make_copy(e, orig));
+    }
+  };
+}
 
 namespace nix_store_nif {
 using namespace nix;
@@ -31,7 +52,6 @@ static ref<LocalFSStore> ensure_local_store() {
   return ref<LocalFSStore>(store_ref);
 }
 
-
 static int on_load(ErlNifEnv *env, void **priv, ERL_NIF_TERM info) {
   nifpp::register_resource<ValidPathRef>(env, nullptr, "ValidPathInfo");
   nix_store_nif::store();
@@ -49,21 +69,31 @@ static int on_upgrade(ErlNifEnv *env, void **priv, void **old_priv_data,
   return on_load(env, priv, load_info);
 }
 
-  template<typename F, typename ...Params> inline
-  ERL_NIF_TERM invoke_with_catch(ErlNifEnv *env, F fun, Params&&... params) {
-    try {
-      return nifpp::make(env, fun(std::forward<Params>(params)...));
+
+  using nifpp::str_atom;
+  struct PortSink : nix::BufferedSink {
+    nifpp::Env env, msgenv;
+    ErlNifPid destination;
+    nifpp::TERM ref;
+    PortSink(const ErlNifPid& pid, const nifpp::TERM& ref) :
+      BufferedSink(),
+      ref(env.copy(ref)), destination(pid) {}
+    virtual void write(const unsigned char * data, size_t len) override {
+      nifpp::binary result(len);
+      // memcpy can probably be avoided by using enif_alloc_binary for buffer
+      memcpy(result.data, data, len);
+      this->send(str_atom("data"), result);
     }
-    catch (nifpp::badarg) {
-      return enif_make_badarg(env);
+    template <typename ...Ts>
+    inline void send(Ts&&... ts) {
+      enif_send(env, &destination, msgenv,
+                nifpp::make(msgenv, std::forward_as_tuple(str_atom("nix_store"), msgenv.copy(ref), ts...)));
+      enif_clear_env(msgenv);
     }
-    catch (nix::InvalidPath) {
-      return enif_raise_exception(env, nifpp::make(env, nifpp::str_atom("nix_invalid_path")));
+    virtual ~PortSink() override {
+      assert(bufPos == 0);
     }
-    catch (nix::Error &e) {
-      return enif_raise_exception(env, nifpp::make(env, (std::string)e.what()));
-    }
-  }
+  };
 #endif
 
   DEFUN(get_real_store_dir, []() {
@@ -116,14 +146,28 @@ static int on_upgrade(ErlNifEnv *env, void **priv, void **old_priv_data,
       return nifpp::construct_resource<ValidPathRef>(info2);
     })
 
+  DEFUNC(path_nar, ERL_NIF_DIRTY_JOB_IO_BOUND, [](nix::Path &path, ErlNifPid& pid, nifpp::TERM& ref) {
+      auto sink = PortSink(pid, ref);
+      try {
+        store()->narFromPath(path, sink);
+        sink.flush();
+        sink.send(str_atom("end"));
+      } catch (nix::Error & e) {
+        sink.flush();
+        sink.send(str_atom("nix_error"), e.what());
+      }
+      return str_atom("ok");
+    })
+
 
   #ifndef FUNC_ONLY
+       
 static ErlNifFunc nif_funcs[] = {
   // you may have been wondering what FUNC_ONLY was about
   #define FUNC_ONLY 1
-  #undef DEFUN
-  #define DEFUN(name, ...)                                       \
-      { #name, (unsigned int)(_##name(NULL, 0, NULL)), _##name},
+  #undef DEFUNC
+  #define DEFUNC(name, dirty, ...)                                   \
+      { #name, (unsigned int)(_##name(NULL, 0, NULL)), _##name, dirty},
 
   #include "nix_store_nif.cpp"
 };
