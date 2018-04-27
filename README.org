@@ -8,13 +8,5 @@ nix-cache is a standalone Nix binary cache HTTP server.
    - Significantly more configurable
 
 ** Considerations
+
    - There is no compression support yet.
-
-** Environment variables
-
-   - ~NIX_CACHE_KEY_FILE~: path to privaty key, required; generate one via:
-     : nix-store --generate-binary-cache-key foo foo.pub foo.key
-   - ~NIX_CACHE_PORT~: HTTP port to listen to; defaults to 17672
-   - ~NIX_CACHE_WANT_MASS_QUERY~: see [[https://nixos.org/releases/nix/nix-1.5/manual.pdf][Nix 1.5 PDF manual]], page 85; defaults to 0
-   - ~NIX_CACHE_PRIORITY~: lookup order; defaults to 30 (cache.nixos.org uses 40)
-   - ~NIX_CACHE_ROOT~: defaults to /nix
