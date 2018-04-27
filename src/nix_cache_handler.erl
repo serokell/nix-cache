@@ -29,9 +29,8 @@ handle(<<$/, Object/binary>>, Req) ->
 serve(Path, PathInfo, <<"nar">>, Req0) ->
     Headers = #{<<"content-length">> => integer_to_binary(nix_store_nif:path_info_narsize(PathInfo)),
 		<<"content-type">> => <<"application/x-nix-nar">>},
-    Port = nix_cache_port:spawn("nix", [<<"dump-path">>, Path]),
     Req1 = cowboy_req:stream_reply(200, Headers, Req0),
-    0 = nix_cache_port:stream(Port, Req1);
+    {ok} = nix_store_nif:path_nar_stream(Path, Req1);
 serve(_, PathInfo0, <<"narinfo">>, Req) ->
     {ok, Key} = application:get_env(nix_cache, key),
     PathInfo1 = nix_store_nif:sign(PathInfo0, Key),
