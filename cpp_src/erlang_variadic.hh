@@ -31,7 +31,7 @@ namespace nifpp_variadic {
   ERL_NIF_TERM helper(ErlNifEnv *env, const ERL_NIF_TERM argv[], F fun) {
     if (env == NULL && argv == NULL) return N<F>::args::n;
     try {
-      return template_fuckery::recursive(env, argv, fun, typename N<F>::args{});
+      return nifpp_variadic::recursive(env, argv, fun, typename N<F>::args{});
     }
     catch (nifpp::badarg) {
       return enif_make_badarg(env);
@@ -47,7 +47,7 @@ namespace nifpp_variadic {
 
 #define DEFUNC(name, dirty, ...)                                         \
   static ERL_NIF_TERM _##name(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) \
-  { return template_fuckery::helper(env, argv, __VA_ARGS__); }
+  { return nifpp_variadic::helper(env, argv, __VA_ARGS__); }
 #define DEFUN(name, ...) DEFUNC(name, 0, __VA_ARGS__)
 
 #endif
