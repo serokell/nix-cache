@@ -1,11 +1,12 @@
-#ifndef ERLANG_VARIADIC
-#define ERLANG_VARIADIC
+#if __cplusplus >= 201703L
+
+#pragma once
 #include <memory>
 #include <nifpp.h>
 #include <functional>
 #include <type_traits>
 
-namespace template_fuckery {
+namespace nifpp_variadic {
   template <typename... Types>
   struct typelist { static const int n = sizeof...(Types); };
   template <typename F>
@@ -42,8 +43,7 @@ namespace template_fuckery {
       return enif_raise_exception(env, nifpp::make(env, (std::string)e.what()));
     }
   }
-}; // namespace template_fuckery
-
+}; // namespace nifpp_variadic
 
 #define DEFUNC(name, dirty, ...)                                         \
   static ERL_NIF_TERM _##name(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) \
