@@ -1,11 +1,12 @@
-#ifndef ERLANG_VARIADIC
-#define ERLANG_VARIADIC
+#if __cplusplus >= 201703L
+
+#pragma once
 #include <memory>
 #include <nifpp.h>
 #include <functional>
 #include <type_traits>
 
-namespace template_fuckery {
+namespace nifpp_variadic {
   template <typename... Types>
   struct typelist { static const int n = sizeof...(Types); };
   template <typename F>
@@ -30,7 +31,7 @@ namespace template_fuckery {
   ERL_NIF_TERM helper(ErlNifEnv *env, const ERL_NIF_TERM argv[], F fun) {
     if (env == NULL && argv == NULL) return N<F>::args::n;
     try {
-      return template_fuckery::recursive(env, argv, fun, typename N<F>::args{});
+      return nifpp_variadic::recursive(env, argv, fun, typename N<F>::args{});
     }
     catch (nifpp::badarg) {
       return enif_make_badarg(env);
@@ -42,12 +43,11 @@ namespace template_fuckery {
       return enif_raise_exception(env, nifpp::make(env, (std::string)e.what()));
     }
   }
-}; // namespace template_fuckery
-
+}; // namespace nifpp_variadic
 
 #define DEFUNC(name, dirty, ...)                                         \
   static ERL_NIF_TERM _##name(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) \
-  { return template_fuckery::helper(env, argv, __VA_ARGS__); }
+  { return nifpp_variadic::helper(env, argv, __VA_ARGS__); }
 #define DEFUN(name, ...) DEFUNC(name, 0, __VA_ARGS__)
 
 #endif
